@@ -54,7 +54,7 @@ tools:
       required: [employee_id]
 
   - name: format_incident_report
-    description: "Trình bày các kết quả đã có thành báo cáo."
+    description: "Chuyển findings đã có thành báo cáo. Dùng sau khi evidence cần thiết đã được thu thập hoặc khi user đã cung cấp findings. Không tự kiểm tra lại nếu user chỉ yêu cầu format."
     parameters:
       type: object
       properties:
@@ -75,7 +75,7 @@ tools:
 
   # ---------------- Optional/advanced tools ----------------
   - name: search_device_info
-    description: "Tìm thông tin công khai về một model thiết bị trên web. Chỉ truyền hãng, model và loại thông tin; không truyền asset ID, employee ID hoặc dữ liệu nội bộ."
+    description: "Tìm thông tin công khai về một model thiết bị trên web. Chỉ truyền hãng và model công khai; không truyền asset ID, employee ID, serial, IP, user, location, diagnostics hoặc dữ liệu nội bộ. Nếu một external-only input có các trường đó, không gọi tool; dùng clarify để yêu cầu public manufacturer/model đã được làm sạch. Điều này không thay thế một safe internal inspect_device call khi asset ID đã có."
     parameters:
       type: object
       properties:
@@ -103,5 +103,5 @@ tools:
         summary: {type: string, default: "", description: "Tóm tắt sự cố"}
         priority: {type: string, enum: [low, medium, high, critical], description: "Mức ưu tiên đã được xác nhận"}
         asset_id: {type: string, default: "", description: "Mã tài sản nếu có"}
-        confirmed: {type: boolean, enum: [true], description: "Chỉ true sau explicit confirmation cho payload hiện tại"}
+        confirmed: {type: boolean, description: "Chỉ true sau explicit confirmation cho payload hiện tại"}
       required: [summary, priority, confirmed]
