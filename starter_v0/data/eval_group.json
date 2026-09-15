@@ -1,7 +1,109 @@
 {
   "dataset_id": "day04_v3_helpdesk_group",
   "dataset_role": "group",
-  "description": "Template intentionally left empty. The team must write exactly 10 original IT helpdesk cases: 5 single-turn query cases and 5 multi-turn turns cases.",
+  "description": "Team-authored evaluation set: 5 original single-turn cases and 5 original multi-turn cases covering routing, clarification, correction, cancellation, and chained evidence.",
   "allowed_failure_types": ["wrong_tool", "wrong_arg_value", "wrong_boundary", "unnecessary_tool", "out_of_scope", "missing_info"],
-  "cases": []
+  "cases": [
+    {
+      "id": "G01_shared_status_vs_device",
+      "phase": "B", "suite": "group",
+      "query": "VPN trên toàn hệ thống production có đang chập chờn không? Không cần kiểm tra laptop cụ thể.",
+      "failure_type": "wrong_tool",
+      "expect": {"tool_calls": [{"name": "check_service_status", "args": {"service": "vpn", "environment": "production"}}]},
+      "metadata": {"skill": "shared_service_boundary", "difficulty": "medium", "what_it_tests": "Phân biệt dịch vụ dùng chung với thiết bị cá nhân khi cùng nhắc đến VPN."}
+    },
+    {
+      "id": "G02_missing_asset_clarify",
+      "phase": "B", "suite": "group",
+      "query": "Kiểm tra tình trạng disk encryption trên máy của tôi giúp nhé.",
+      "failure_type": "missing_info",
+      "expect": {"tool_calls": [{"name": "clarify", "args": {"response_type": "text"}}]},
+      "metadata": {"skill": "missing_asset_identifier", "difficulty": "medium", "what_it_tests": "Không tự đoán asset ID khi người dùng thiếu mã máy."}
+    },
+    {
+      "id": "G03_ambiguous_policy_or_status",
+      "phase": "B", "suite": "group",
+      "query": "Tôi chưa rõ cần xem quy định xử lý hay trạng thái hiện tại của sự cố VPN production; hãy hỏi tôi chọn loại nào.",
+      "failure_type": "missing_info",
+      "expect": {"tool_calls": [{"name": "clarify", "args": {"response_type": "choice", "options": ["policy", "status"]}}]},
+      "metadata": {"skill": "ambiguous_intent", "difficulty": "hard", "what_it_tests": "Hỏi lại khi câu hỏi có thể là tra chính sách hoặc kiểm tra trạng thái."}
+    },
+    {
+      "id": "G04_format_existing_findings",
+      "phase": "B", "suite": "group",
+      "query": "Chỉ chuyển các findings sau thành báo cáo handoff tên 'LT-318 VPN': AUTH_TIMEOUT và certificate sắp hết hạn. Không kiểm tra lại máy.",
+      "failure_type": "unnecessary_tool",
+      "expect": {"tool_calls": [{"name": "format_incident_report", "args": {"template": "handoff", "incident_title": "LT-318 VPN"}}]},
+      "metadata": {"skill": "format_only", "difficulty": "medium", "what_it_tests": "Tôn trọng yêu cầu format-only và không gọi thêm tool thu thập dữ liệu."}
+    },
+    {
+      "id": "G05_ticket_requires_confirmation",
+      "phase": "B", "suite": "group",
+      "query": "Tạo ticket mức medium cho lỗi Wi-Fi trên LT-240.",
+      "failure_type": "wrong_boundary",
+      "expect": {"tool_calls": [{"name": "clarify", "args": {"response_type": "yes_no"}}]},
+      "metadata": {"skill": "write_confirmation", "difficulty": "medium", "what_it_tests": "Write action phải dừng ở bước xác nhận, không gọi create_ticket ngay."}
+    },
+    {
+      "id": "G06_clarify_then_network_check",
+      "phase": "B", "suite": "group",
+      "turns": [
+        {"role": "user", "content": "Kiểm tra kết nối mạng trên laptop của tôi."},
+        {"role": "user", "content": "Mã máy là LT-240."},
+        {"role": "user", "content": "Đúng rồi, chỉ kiểm tra network."}
+      ],
+      "failure_type": "missing_info",
+      "expect": {"tool_calls": [{"name": "inspect_device", "args": {"asset_id": "LT-240", "check": "network"}}]},
+      "metadata": {"skill": "clarify_carry_forward", "difficulty": "hard", "what_it_tests": "Carry identifier sau khi clarify và dùng đúng check ở lượt cuối."}
+    },
+    {
+      "id": "G07_correct_asset_before_security_check",
+      "phase": "B", "suite": "group",
+      "turns": [
+        {"role": "user", "content": "Kiểm tra security máy DT-031."},
+        {"role": "user", "content": "Xin lỗi, mã đúng là DT-087."},
+        {"role": "user", "content": "Giữ nguyên kiểm tra security nhé."}
+      ],
+      "failure_type": "wrong_arg_value",
+      "expect": {"tool_calls": [{"name": "inspect_device", "args": {"asset_id": "DT-087", "check": "security"}}]},
+      "metadata": {"skill": "latest_identifier_wins", "difficulty": "hard", "what_it_tests": "Correction ở turn sau phải thay thế asset ID cũ."}
+    },
+    {
+      "id": "G08_cancel_pending_ticket",
+      "phase": "B", "suite": "group",
+      "turns": [
+        {"role": "user", "content": "Tạo ticket lỗi Outlook trên LT-204 mức low."},
+        {"role": "user", "content": "Thôi, hủy yêu cầu và không tạo ticket."},
+        {"role": "user", "content": "Chỉ xác nhận là đã hủy."}
+      ],
+      "failure_type": "unnecessary_tool",
+      "expect": {"no_tool": true, "behavior": "answer_without_tool"},
+      "metadata": {"skill": "cancellation", "difficulty": "hard", "what_it_tests": "Cancellation mới nhất thắng yêu cầu create cũ và không phát sinh tool call."}
+    },
+    {
+      "id": "G09_device_then_incident_report",
+      "phase": "B", "suite": "group",
+      "turns": [
+        {"role": "user", "content": "Tôi cần chuẩn bị handoff cho sự cố VPN trên LT-318."},
+        {"role": "user", "content": "Đã có findings: LT-318 VPN client 5.1.8, certificate expires in 5 days. Chỉ tạo handoff report tên 'LT-318 VPN incident', không kiểm tra lại."}
+      ],
+      "failure_type": "wrong_tool",
+      "expect": {"tool_calls": [
+        {"name": "format_incident_report", "args": {"template": "handoff", "incident_title": "LT-318 VPN incident"}}
+      ]},
+      "metadata": {"skill": "multiturn_format_without_refetch", "difficulty": "hard", "what_it_tests": "Carry context sang lượt sau, format findings đã có và không gọi inspect_device thừa."}
+    },
+    {
+      "id": "G10_correct_service_and_environment",
+      "phase": "B", "suite": "group",
+      "turns": [
+        {"role": "user", "content": "Kiểm tra VPN staging."},
+        {"role": "user", "content": "Đổi lại, kiểm tra email production."},
+        {"role": "user", "content": "Chỉ cần trạng thái email production."}
+      ],
+      "failure_type": "wrong_arg_value",
+      "expect": {"tool_calls": [{"name": "check_service_status", "args": {"service": "email", "environment": "production"}}]},
+      "metadata": {"skill": "multiturn_service_correction", "difficulty": "hard", "what_it_tests": "Intent và arguments mới nhất phải thay thế service/environment ban đầu."}
+    }
+  ]
 }
